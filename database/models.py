@@ -4,10 +4,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Relationship
 import datetime
 
-DB_URL = "sqlite:///im.db"
-import datetime
-
-class Base(object):
+class ModelMixin(object):
 
     created = sa.Column(
         sa.DateTime(timezone=True),
@@ -21,7 +18,8 @@ class Base(object):
         nullable=False
     )
 
-class User(Base):
+DeclarativeBase = declarative_base(cls=ModelMixin)
+class User(DeclarativeBase):
     """
         用户信息表
     """
@@ -39,7 +37,7 @@ class User(Base):
     age = sa.Column(sa.SMALLINT,comment="用户年龄",nullable=True)
     sex = sa.Column(sa.SMALLINT,comment="用户性别",nullable=True)
 
-class UserFriendShip(Base):
+class UserFriendShip(DeclarativeBase):
     """
         用户好友列表
     """
@@ -54,11 +52,11 @@ class UserFriendShip(Base):
     friend_nickname=sa.Column(sa.String(256),nullable=False,comment="好友昵称")
     relationship=sa.Column(sa.SMALLINT,comment="好友关系(1:好友 2:陌生人)",nullable=False,default=1)
 
-class UserGroupShip(Base):
+class UserGroupShip(DeclarativeBase):
     """
         用户群列表
     """
-    __tablename__="im_user_friends_ship"
+    __tablename__="im_user_group_ship"
 
     id = sa.Column(sa.BIGINT, primary_key=True) 
     user_id = sa.Column(ForeignKey(User.id),comment="用户ID")
@@ -69,7 +67,7 @@ class UserGroupShip(Base):
     group_nickname=sa.Column(sa.String(256),nullable=False,comment="群昵称")
 
 
-class Group(Base):
+class Group(DeclarativeBase):
     """
         群信息表
     """
@@ -78,25 +76,26 @@ class Group(Base):
 
     id = sa.Column(sa.BIGINT, primary_key=True) #
     group_name = sa.Column(sa.String(256),comment="群聊名称",nullable=False)
-    creator_id = sa.Column(ForeignKey(User.id,onupdate="CASCADE", ondelete="SCASCADE"),comment="创建者") 
+    creator_id = sa.Column(ForeignKey(User.id,onupdate="CASCADE", ondelete="CASCADE"),comment="创建者") 
     creator = Relationship(User,foreign_keys=[creator_id])
     created_time = sa.Column(sa.DateTime,default=datetime.datetime.now)
-    owner_id =  sa.Column(ForeignKey(User.id,onupdate="CASCADE", ondelete="SCASCADE"),comment="群主") 
+    owner_id =  sa.Column(ForeignKey(User.id,onupdate="CASCADE", ondelete="CASCADE"),comment="群主") 
     announcement = sa.Column(sa.TEXT,nullable=True,comment="群公告")
 
-class GroupUserShip(Base):
+class GroupUserShip(DeclarativeBase):
     """
         群成员表
     """
+    __tablename__="im_group_user_ship"
     id = sa.Column(sa.BIGINT, primary_key=True) #
-    group_id = sa.Column(ForeignKey(Group.id,onupdate="CASCADE", ondelete="SCASCADE"),comment="群id")
-    user_id = sa.Column(ForeignKey(User.id,onupdate="CASCADE", ondelete="SCASCADE"),comment="用户ID")
+    group_id = sa.Column(ForeignKey(Group.id,onupdate="CASCADE", ondelete="CASCADE"),comment="群id")
+    user_id = sa.Column(ForeignKey(User.id,onupdate="CASCADE", ondelete="CASCADE"),comment="用户ID")
     group = Relationship(Group,foreign_keys=[group_id])
     user=Relationship(User,foreign_keys=[user_id])
     group_nickname=sa.Column(sa.String(256),nullable=False,comment="群昵称")
 
 
-class Message(Base):
+class Message(DeclarativeBase):
     """
         im消息表
     """
@@ -113,27 +112,5 @@ class Message(Base):
     send_time = sa.Column(sa.DATETIME,comment="发送时间",default=datetime.datetime.now)
 
 
-DeclarativeBase = declarative_base(cls=Base)
 
 
-
-from sqlalchemy.ext.asyncio import create_async_engine
-
-engine = create_async_engine(
-    DB_URL, 
-    connect_args={"check_same_thread": False}
-)
-DeclarativeBase.metadata.create_all(engine)
-
-from sqlalchemy.ext.asyncio import  AsyncSession,async_sessionmaker
-from sqlalchemy.ext.asyncio.scoping import async_scoped_session
-from asyncio import current_task
-
-
-async_session = async_scoped_session(
-    async_sessionmaker(
-        engine,
-        class_=AsyncSession,
-    ),
-    scopefunc=current_task,
-)
