@@ -5,7 +5,7 @@ from asyncio import current_task
 from sqlalchemy.orm import sessionmaker
 import asyncio
 from typing import AsyncGenerator, Callable, Type
-
+from fastapi import Depends
 
 import sqlalchemy as sa
 from sqlalchemy.ext.declarative import declarative_base
@@ -37,6 +37,23 @@ class BaseRepository:
         return self._conn
 
 
+async def get_session() -> AsyncGenerator[AsyncSession, None]:
+    async with async_session() as session:
+        yield session
+
+
+
+def get_repository(
+    repo_type: Type[BaseRepository],
+) -> Callable[[AsyncSession], BaseRepository]:
+    def _get_repo(
+        conn: AsyncSession = Depends(get_session),
+    ) -> BaseRepository:
+        return repo_type(conn)
+
+    return _get_repo
+
+
 
 DB_URL = "sqlite+aiosqlite:///im.db" ## TODO
 
@@ -57,11 +74,5 @@ async_session = async_scoped_session(
 # async def init_models():
 #     async with engine.begin() as conn:
 #         await conn.run_sync(DeclarativeBase.metadata.create_all)
-
-
-# # Dependency
-async def get_session() -> AsyncGenerator[AsyncSession, None]:
-    async with async_session() as session:
-        yield session
 
 # asyncio.run(init_models())

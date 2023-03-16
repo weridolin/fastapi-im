@@ -7,7 +7,7 @@ class IMBaseModel(BaseModel):
 
 
 class BaseResponse(IMBaseModel):
-    message:str
-    status_code:int
+    message:str=None
+    status_code:int=200
     code:int=0
     data:Any=None

@@ -11,7 +11,7 @@ class SchemaMixin(object):
 
 class UserSchema(BaseModel,SchemaMixin):
     username:Optional[str] =None
-    password:str
+    # password:str
     email:str
     telephone:str
     avatar:str

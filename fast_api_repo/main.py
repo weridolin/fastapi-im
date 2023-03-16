@@ -1,3 +1,5 @@
+import sys
+print(sys.path)
 from fastapi import FastAPI
 from socketio import AsyncServer
 import socketio
@@ -25,18 +27,18 @@ app.include_router(
 )
 
 
-sio =  AsyncServer(async_mode='asgi')
+# sio =  AsyncServer(async_mode='asgi')
 
-@sio.event(namespace='/chat')
-def connect(sid, environ, auth):
-    print('connect ', sid)
+# @sio.event(namespace='/chat')
+# def connect(sid, environ, auth):
+#     print('connect ', sid)
 
-@sio.event(namespace='/chat')
-def disconnect(sid):
-    print('disconnect ', sid)
+# @sio.event(namespace='/chat')
+# def disconnect(sid):
+#     print('disconnect ', sid)
 
-@app.get("/")
-async def root():
-    return {"message": "Hello World"}
+# @app.get("/")
+# async def root():
+#     return {"message": "Hello World"}
 
-app.mount("/",socketio.ASGIApp(sio,socketio_path="chat"))
+# app.mount("/",socketio.ASGIApp(sio,socketio_path="chat"))
