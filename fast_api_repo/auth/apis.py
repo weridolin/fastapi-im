@@ -63,4 +63,10 @@ def logout():
     ...
 
 
-
+@auth_router.post(
+    "/register",
+    name="auth:register",
+    response_model=BaseResponse
+)
+def register():
+    ...

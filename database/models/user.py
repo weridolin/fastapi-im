@@ -34,20 +34,6 @@ class UserFriendShip(DeclarativeBase):
     user = Relationship(User,foreign_keys=[user_id])
     friend_id = sa.Column(ForeignKey(User.id),comment="好友ID")
     friend_group=sa.Column(sa.String(256),nullable=True,default="我的好友")
-    current_contact_time=sa.Column(sa.DATETIME,default=datetime.datetime.now,comment="最近联系时间")
+    current_contact_time=sa.Column(sa.DateTime,default=datetime.datetime.now,comment="最近联系时间")
     friend_nickname=sa.Column(sa.String(256),nullable=False,comment="好友昵称")
     relationship=sa.Column(sa.SMALLINT,comment="好友关系(1:好友 2:陌生人)",nullable=False,default=1)
-
-class UserGroupShip(DeclarativeBase):
-    """
-        用户群列表
-    """
-    __tablename__="im_user_group_ship"
-
-    id = sa.Column(sa.BIGINT, primary_key=True) 
-    user_id = sa.Column(ForeignKey(User.id),comment="用户ID")
-    user = Relationship(User,foreign_keys=[user_id])
-    group_id = sa.Column(ForeignKey(User.id),comment="群ID")
-    group= Relationship("Group",foreign_keys=[group_id])
-    current_contact_time=sa.Column(sa.DATETIME,default=datetime.datetime.now,comment="最近更新时间")
-    group_nickname=sa.Column(sa.String(256),nullable=False,comment="群昵称")

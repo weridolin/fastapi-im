@@ -6,7 +6,7 @@ class AppSettings(BaseSettings):
     EMAIL_PWD:str
     REDIS_DSN: RedisDsn
     PG_DSN: PostgresDsn
-    AMQP_DSN: AmqpDsn
+    # AMQP_DSN: AmqpDsn
     JWT_KEY:str
     JWT_EXPIRE_TIME:int
     JWT_ALGORITHM:str
