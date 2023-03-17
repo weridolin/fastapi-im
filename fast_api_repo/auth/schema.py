@@ -12,6 +12,11 @@ class UserWithToken(UserSchema):
 class LoginResponse(BaseResponse):
     data:UserWithToken
 
+class RegisterForm(BaseModel):
+    username:str
+    password:str
+    email:str
+
 
 class JWTPayLoad(BaseModel):
     exp: datetime

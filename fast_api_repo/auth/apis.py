@@ -1,10 +1,10 @@
 from fastapi import APIRouter,Depends
-from fast_api_repo.auth.schema import LoginRequest,LoginResponse,BaseResponse,UserWithToken
+from fast_api_repo.auth.schema import LoginRequest,LoginResponse,BaseResponse,UserWithToken,RegisterForm,UserSchema
 from database.repositories.user import UserRepository
 from database.base import get_repository
 from fast_api_repo.settings import get_app_settings,AppSettings
 from fast_api_repo.utils import is_email
-from database.exceptions import UserDoesNotExist,PassWordError
+from database.exceptions import UserDoesNotExist,PassWordError,EmailIsExistError,UserIsExistError
 from starlette import status
 from fast_api_repo.auth.jwt import create_access_token_for_user
 
@@ -56,7 +56,7 @@ async def login(
     name="auth:logout",
     response_model=BaseResponse
     )
-def logout():
+async def logout():
     """
         登出接口
     """
@@ -68,5 +68,29 @@ def logout():
     name="auth:register",
     response_model=BaseResponse
 )
-def register():
-    ...
+async def register(
+    register_form:RegisterForm,
+    users_repo:UserRepository=Depends(get_repository(UserRepository)),
+    app_setting:AppSettings=Depends(get_app_settings)
+):
+    """
+        注册接口
+    """
+    # check username is used
+    if await users_repo.get_user_by_username(username=register_form.username):
+        raise UserIsExistError(
+            detail="用户名已经存在",
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
+
+    if await users_repo.get_user_by_email(email=register_form.email):
+        raise EmailIsExistError(
+            detail="邮箱已经存在",
+            status_code=status.HTTP_400_BAD_REQUEST
+        )        
+    
+    user = await users_repo.create_user(salt=app_setting.SALT,**register_form.dict())
+    return BaseResponse(
+        message="创建成功",
+        data=UserSchema.from_orm(user).dict()
+    )

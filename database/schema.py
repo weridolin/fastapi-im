@@ -1,25 +1,28 @@
-from pydantic import BaseModel
+from pydantic import BaseModel,validator
 from datetime import datetime
 from typing import Optional
-class SchemaMixin(object):
+class SchemaMixin(BaseModel):
     class Config:
         orm_mode=True
         
-    created:datetime=datetime.now
+    created:Optional[datetime]=None
     last_update:Optional[datetime]=None
 
+    @validator('created', pre=True, always=True)
+    def set_create_now(cls, v):
+        return v or datetime.now()
 
-class UserSchema(BaseModel,SchemaMixin):
+class UserSchema(SchemaMixin):
     username:Optional[str] =None
     # password:str
-    email:str
-    telephone:str
-    avatar:str
-    age:int
-    sex:int
+    email:Optional[str] =None
+    telephone:Optional[str] =None
+    avatar:Optional[str] =None
+    age:Optional[str] =None
+    sex:Optional[str] =None
 
 
-class UserFriendShipSchema(BaseModel,SchemaMixin):
+class UserFriendShipSchema(SchemaMixin):
     user_id:int
     friend_id:int
     friend_group:str
@@ -28,14 +31,14 @@ class UserFriendShipSchema(BaseModel,SchemaMixin):
     relationship:int=1
 
 
-class UserGroupShipSchema(BaseModel,SchemaMixin):
+class UserGroupShipSchema(SchemaMixin):
     user_id:int
     group_id:int
     current_contact_time:str
     group_nickname:str
 
 
-class GroupSchema(BaseModel,SchemaMixin):
+class GroupSchema(SchemaMixin):
     group_name:str
     creator_id:int
     created_time:datetime
@@ -43,7 +46,7 @@ class GroupSchema(BaseModel,SchemaMixin):
     announcement:str
 
 
-class MessageSchema(BaseModel,SchemaMixin):
+class MessageSchema(SchemaMixin):
     msg_from:int
     msg_to:int
     msg_content:str

@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 import asyncio
 from typing import AsyncGenerator, Callable, Type
 from fastapi import Depends
-
+from fast_api_repo.settings import AppSettings,get_app_settings
 import sqlalchemy as sa
 from sqlalchemy.ext.declarative import declarative_base
 import datetime
@@ -55,18 +55,16 @@ def get_repository(
 
 
 
-DB_URL = "sqlite+aiosqlite:///im.db" ## TODO
-
 
 engine = create_async_engine(
-    DB_URL, 
-    connect_args={"check_same_thread": False}
+    str(get_app_settings().ASYNC_PG_DSN)
 )
 
 async_session = async_scoped_session(
     sessionmaker(
         engine,
         class_=AsyncSession,
+        expire_on_commit=False #@https://github.com/sqlalchemy/sqlalchemy/discussions/6165
     ),
     scopefunc=current_task,
 )

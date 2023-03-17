@@ -10,7 +10,8 @@ class AppSettings(BaseSettings):
     JWT_KEY:str
     JWT_EXPIRE_TIME:int
     JWT_ALGORITHM:str
-
+    SALT:str
+    ASYNC_PG_DSN:PostgresDsn
     class Config:
         env_file = '.env'
         env_file_encoding = 'utf-8'

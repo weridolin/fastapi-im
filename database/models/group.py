@@ -29,7 +29,7 @@ class UserGroupShip(DeclarativeBase):
     id = sa.Column(sa.BIGINT, primary_key=True) 
     user_id = sa.Column(ForeignKey(User.id),comment="用户ID")
     user = Relationship(User,foreign_keys=[user_id])
-    group_id = sa.Column(ForeignKey(User.id),comment="群ID")
+    group_id = sa.Column(ForeignKey(Group.id),comment="群ID")
     group= Relationship(Group,foreign_keys=[group_id])
     current_contact_time=sa.Column(sa.DateTime,default=datetime.datetime.now,comment="最近更新时间")
     group_nickname=sa.Column(sa.String(256),nullable=False,comment="群昵称")
