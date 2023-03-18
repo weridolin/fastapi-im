@@ -6,7 +6,9 @@ from fast_api_repo.settings import get_app_settings,AppSettings
 from fast_api_repo.utils import is_email
 from database.exceptions import UserDoesNotExist,PassWordError,EmailIsExistError,UserIsExistError
 from starlette import status
-from fast_api_repo.auth.jwt import create_access_token_for_user
+from fast_api_repo.auth.jwt import create_access_token_for_user,get_current_active_user
+from fast_api_repo.auth.encrypt import encrypt_by_md5
+from database.models.user import User
 
 auth_router = APIRouter()
 
@@ -34,7 +36,7 @@ async def login(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="用户名不存在"
         )
-    if user.password != login_request.password:
+    if user.password != encrypt_by_md5(login_request.password,app_setting.SALT):
         raise PassWordError(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="密码错误"
@@ -56,11 +58,17 @@ async def login(
     name="auth:logout",
     response_model=BaseResponse
     )
-async def logout():
+async def logout(
+        current_user: User = Depends(get_current_active_user)
+    ):
     """
         登出接口
     """
-    ...
+    return BaseResponse(
+        message="注销成功",
+        status_code=status.HTTP_204_NO_CONTENT,
+        data=None
+    )
 
 
 @auth_router.post(

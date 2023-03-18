@@ -1,13 +1,17 @@
 from fast_api_repo.base import IMBaseModel,BaseModel,BaseResponse
 from database.schema import UserSchema
 from datetime import datetime
+from typing import Optional
+
+
 class LoginRequest(BaseModel):
     count:str
     password:str
 
 class UserWithToken(UserSchema):
     access_token:str
-    refresh_token:str
+    refresh_token:Optional[str]=None
+    token_type:str= "bearer"
 
 class LoginResponse(BaseResponse):
     data:UserWithToken
@@ -19,6 +23,7 @@ class RegisterForm(BaseModel):
 
 
 class JWTPayLoad(BaseModel):
-    exp: datetime
+    user_id:int
+    exp: int
     sub: str="access"
     username:str
