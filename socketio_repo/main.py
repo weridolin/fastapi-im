@@ -116,7 +116,7 @@ class ImNameSpace(socketio.AsyncNamespace):
 
             ## 保存到数据库
             ...
-        else:``
+        else:
             ## 未在线,推送到对应的mq/用户一对一写消息队列
             ### 先写到对应的一对一消息信道
             await self.redis.xadd(
