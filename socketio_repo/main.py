@@ -8,7 +8,8 @@ from settings import get_app_settings
 import aioredis
 from utils.redis_key import RedisKey
 from messages.schema import UserInfo,UserState,HeartBeatFrame,Message,SENDRESPONSE,MessageResponse,MessageResponseFrame
-from typing import Any
+from typing import Any 
+from aioredis.exceptions import BUS
 
 mgr = socketio.AsyncRedisManager(get_app_settings().REDIS_DSN)
 sio = socketio.AsyncServer(
@@ -112,13 +113,33 @@ class ImNameSpace(socketio.AsyncNamespace):
                 )
             except Exception as exc:
                 print(traceback.format_exc())
-                
+
             ## 保存到数据库
             ...
-        else:
-            ## 未在线,推送到对应的mq，
-            ...
+        else:``
+            ## 未在线,推送到对应的mq/用户一对一写消息队列
+            ### 先写到对应的一对一消息信道
+            await self.redis.xadd(
+                name=RedisKey.user_msg_channel(
+                    user_id=user_to.user_id
+                ),
+                fields=msg.json() # TODO id设置为消息ID？必须递增
+            )
+            ### 创造PC端的消费者组,如果报错，说明已经存在，跳过,消费者会在读取消息的时候去创建
+            # TODO 移动端
+            try:
+                await self.redis.xgroup_create(
+                    name=RedisKey.user_msg_channel(
+                        user_id=user_to.user_id
+                    ),
+                    groupname=RedisKey.user_msg_channel_groups_name(
+                        user_id=user_to.user_id,
+                        type="PC"
+                    )
+                )
 
+            except Exception:
+                pass
 
 
 sio.register_namespace(ImNameSpace('/im'))
