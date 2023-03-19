@@ -1,7 +1,7 @@
 from typing import Dict
 import datetime
 from database.models.user import User
-from fast_api_repo.settings import AppSettings
+from settings import AppSettings
 from fast_api_repo.auth.schema import JWTPayLoad
 from pydantic import ValidationError
 from fastapi.security import OAuth2PasswordBearer,OAuth2PasswordRequestForm

@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 import asyncio
 from typing import AsyncGenerator, Callable, Type
 from fastapi import Depends
-from fast_api_repo.settings import AppSettings,get_app_settings
+from settings import AppSettings,get_app_settings
 import sqlalchemy as sa
 from sqlalchemy.ext.declarative import declarative_base
 import datetime

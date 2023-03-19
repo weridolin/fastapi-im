@@ -2,11 +2,11 @@ from fastapi import APIRouter,Depends
 from fast_api_repo.auth.schema import LoginRequest,LoginResponse,BaseResponse,UserWithToken,RegisterForm,UserSchema
 from database.repositories.user import UserRepository
 from database.base import get_repository
-from fast_api_repo.settings import get_app_settings,AppSettings
+from settings import get_app_settings,AppSettings
 from fast_api_repo.utils import is_email
 from database.exceptions import UserDoesNotExist,PassWordError,EmailIsExistError,UserIsExistError
 from starlette import status
-from fast_api_repo.auth.jwt import create_access_token_for_user,get_current_active_user
+from database.jwt import create_access_token_for_user,get_current_active_user
 from fast_api_repo.auth.encrypt import encrypt_by_md5
 from database.models.user import User
 

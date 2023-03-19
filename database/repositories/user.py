@@ -4,7 +4,7 @@ from database.models.user import User
 from database.exceptions import UserDoesNotExist
 from sqlalchemy import select
 from fast_api_repo.auth.encrypt import encrypt_by_md5
-from fast_api_repo.settings import AppSettings
+from settings import AppSettings
 from fast_api_repo.auth.schema import JWTPayLoad
 import jwt
 from typing import Optional

@@ -32,7 +32,7 @@ target_metadata = DeclarativeBase.metadata
 # ... etc.
 
 ## set db uri
-from fast_api_repo.settings import get_app_settings
+from settings import get_app_settings
 SETTINGS = get_app_settings()
 DATABASE_URL = SETTINGS.PG_DSN
 
