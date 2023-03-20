@@ -8,5 +8,5 @@
 
 #### 未接受队列
 采用写扩展的形式,当用户不在线时,将消息写到redis对应的用户消息通道里面:  
-- 采用stream的结构.每种硬件一个consumer（PC/Android/IOS）
-- 每个群也单独一个消息通道
+- 采用stream的结构.每种硬件 一个consumer（PC/Android/IOS）
+- stream里面的消息分为2种，1:单聊消息, 2:群聊消息
