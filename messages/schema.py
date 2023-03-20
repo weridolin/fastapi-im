@@ -26,7 +26,7 @@ class FrameType(Enum):
     MESSAGE="message"
     RESPONSE="response"
     MSGACK="msgack" #客户端确认收到的消息的格式
-    
+
 class MessageContentType(IntEnum):
     text=1
 
@@ -84,9 +84,19 @@ class MessageResponseFrame(BaseFrame):
     data:MessageResponse
 
 class MessageAckFrame(BaseFrame):
+    """
+        收到消息确认返回
+    """
     type:str=FrameType.MSGACK.value
     msg_ids:List[str]=list()
     user_id:int
-    username:int
-    
+    username:str
 
+## 拉取的消息格式
+class MessagePulled(BaseFrame):
+    """
+
+    """
+    type:str=FrameType.MESSAGE.value
+    data:MessagePayLoad
+    msg_id:str

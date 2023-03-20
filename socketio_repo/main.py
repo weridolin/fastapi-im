@@ -7,9 +7,10 @@ import traceback
 from settings import get_app_settings
 import aioredis
 from utils.redis_key import RedisKey
-from messages.schema import UserInfo,UserState,HeartBeatFrame,Message,MessageResponse,MessageResponseFrame,FrameType,MessageAckFrame
+from messages.schema import UserInfo,UserState,HeartBeatFrame,Message,MessageResponse,MessageResponseFrame,FrameType,MessageAckFrame,MessagePulled,MessagePayLoad
 from typing import Any 
 from aioredis.exceptions import ResponseError
+import json
 
 mgr = socketio.AsyncRedisManager(get_app_settings().REDIS_DSN)
 sio = socketio.AsyncServer(
@@ -101,11 +102,15 @@ class ImNameSpace(socketio.AsyncNamespace):
         return 
 
     async def on_msgack(self,sid,data:MessageAckFrame,*args):
-        msg=MessageAckFrame.parse_raw(data)
+        if isinstance(data,dict):
+            msg=MessageAckFrame.parse_obj(data)
+        else:
+            msg=MessageAckFrame.parse_raw(data)
+        print(">>>",msg)
         # for id in msg.msg_ids:
         await self.redis.xack(
-            name=RedisKey.user_msg_channel(user_id=msg.user_id),
-            groupname=RedisKey.user_msg_channel_groups_name(user_id=msg.user_id,type="PC")
+            RedisKey.user_msg_channel(user_id=msg.user_id),
+            RedisKey.user_msg_channel_groups_name(user_id=msg.user_id,type="PC"),
             *msg.msg_ids
         )
         print("ack message ids ->",msg.msg_ids)
@@ -123,7 +128,7 @@ class ImNameSpace(socketio.AsyncNamespace):
             try:
                 await sio.emit(
                     event= FrameType.MESSAGE.value,
-                    data=msg.json(),
+                    data=msg.data.json(),
                     namespace="/im",
                     to=user_to.sid
                 )
@@ -139,7 +144,7 @@ class ImNameSpace(socketio.AsyncNamespace):
                 name=RedisKey.user_msg_channel(
                     user_id=msg.data.msg_to
                 ),
-                fields={"data":msg.json()},
+                fields={"data":msg.data.json()},
                 id="*"  # TODO id设置为消息ID？必须递增
             )
             ### 创造PC端的消费者组,如果报错，说明已经存在，跳过,消费者会在读取消息的时候去创建
@@ -166,11 +171,17 @@ class ImNameSpace(socketio.AsyncNamespace):
         ### 2.再获取stream里面信息的消息 xreadgroup
         ### pel里面的消息肯定是在xreadgroup之前
         res=list()
-        pending_list= await self.redis.xread(
+        pending_list= await self.redis.xreadgroup(
+            groupname=RedisKey.user_msg_channel_groups_name(
+                user_id=payload.user_id,
+                type="PC"
+            ),
+            consumername="consumer",
             streams={RedisKey.user_msg_channel(user_id=payload.user_id):0},
         )
         if pending_list:
             res.extend(pending_list[0][1])
+            print(">>> pending list",pending_list)
         msg_list = await self.redis.xreadgroup(
             groupname=RedisKey.user_msg_channel_groups_name(
                 user_id=payload.user_id,
@@ -181,11 +192,17 @@ class ImNameSpace(socketio.AsyncNamespace):
         )  
         if msg_list:
             res.extend(msg_list[0][1])  # todo format res 
-        print(res,">>>>>")
+            print(">>> msg list",msg_list)
+        res_format = [
+            MessagePulled(
+                msg_id=msg[0],
+                data=MessagePayLoad.parse_raw(msg[1]["data"])
+            ).dict() for msg in res
+        ]
         ## 把新消息发送给客户端，客户端返回收到的消息id 
         res = await sio.emit(
             event= FrameType.MESSAGE.value,
-            data=res,
+            data=res_format,
             namespace="/im",
             to=sid
         )
