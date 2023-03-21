@@ -1,9 +1,10 @@
 ## socket io 的消息格式
 from pydantic import BaseModel
 from enum import Enum, IntEnum
-from typing import Any,Optional
+from typing import Any,Optional,Union
 from datetime import datetime
 from typing import List
+from database.schema import UserSchema
 
 
 
@@ -25,7 +26,17 @@ class FrameType(Enum):
     UNDEFINED="undefined"
     MESSAGE="message"
     RESPONSE="response"
-    MSGACK="msgack" #客户端确认收到的消息的格式
+    MSGACK="msgAck" #客户端确认收到的消息的格式
+    GROUPNEWNUMBER="groupNewNumber"
+    GROUPEXISTNUMBER="groupExistNumber"
+    USERINFOCHANGE="userInfoChange" #用户资料改变
+    ADDFRIEND="addFriend" #新增好友申请
+    # DELFRIEND="delFriend" #删除好友
+    FRIENDACCEPT="friendAccept" #好友添加被接受
+    FRIENDREFUSED="friendRefuse"#好友添加被拒绝
+
+    # BLACKLISTDEL="blackListDel"#从黑名单中移除
+
 
 class MessageContentType(IntEnum):
     text=1
@@ -35,14 +46,29 @@ class BaseFrame(BaseModel):
     data:Any=None
 
 class MessagePayLoad(BaseModel):
+    ## 群消息时,msg_to为空，单聊时,group_id为None
     msg_from:int
-    msg_to:int
+    msg_to:Optional[int]=None
     msg_content:str
     msg_type:MessageContentType=MessageContentType.text
     group_id:Optional[int]=None
     send_time:Optional[int]=None
     created:Optional[int]=None 
     last_update:Optional[int]=None 
+
+class AddFriendPayLoad(BaseModel):
+    type:str=FrameType.ADDFRIEND.value
+    user:UserSchema
+
+class AcceptFriendPayLoad(AddFriendPayLoad):
+    type:str=FrameType.FRIENDACCEPT.value
+
+class RefuseFriendPayLoad(AddFriendPayLoad):
+    type:str=FrameType.FRIENDREFUSED.value
+
+class UserInfoChangePayload(BaseModel):
+    type:str=FrameType.USERINFOCHANGE.value
+    user:UserSchema
 
 class HeartBeatFrame(BaseFrame):
     """
@@ -59,23 +85,12 @@ class HeartBeatFrame(BaseFrame):
 
 class Message(BaseFrame):
     """
-        {
-            "type":2,
-            "data":{
-                "msg_from":10,
-                "msg_to":11,
-                "msg_content":"test",
-                "msg_type":1,
-                "group_id":null,
-                "send_time":1679275312,
-                "created":1679275312, 
-                "last_update":1679275312
-            }
-        }
+        消息支持多种类型，除了基本的消息类型，还包括
     """
     type:str=FrameType.MESSAGE.value
-    data:MessagePayLoad
+    data: Union[MessagePayLoad,AcceptFriendPayLoad,AddFriendPayLoad,RefuseFriendPayLoad,UserInfoChangePayload]
 
+    
 class MessageResponse(BaseFrame):
     result:bool=False
 
@@ -100,3 +115,5 @@ class MessagePulled(BaseFrame):
     type:str=FrameType.MESSAGE.value
     data:MessagePayLoad
     msg_id:str
+
+# class Groupe

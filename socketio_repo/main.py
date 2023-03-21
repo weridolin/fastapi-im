@@ -11,18 +11,21 @@ from messages.schema import UserInfo,UserState,HeartBeatFrame,Message,MessageRes
 from typing import Any 
 from aioredis.exceptions import ResponseError
 import json
+from database.base import get_repository
+from database.repositories.user import UserRepository
+from database.repositories.message import MessageRepository
 
 mgr = socketio.AsyncRedisManager(get_app_settings().REDIS_DSN)
 sio = socketio.AsyncServer(
-    async_mode='asgi',
-    client_manager=mgr
+        async_mode='asgi',
+        client_manager=mgr
     )
-app = socketio.ASGIApp(sio)
-
+app = socketio.ASGIApp(sio,socketio_path="/chat")
 
 class ImNameSpace(socketio.AsyncNamespace):
 
     app_settings = get_app_settings()
+    msg_repo:MessageRepository = get_repository(MessageRepository)
 
     def __init__(self, namespace=None):
         super().__init__(namespace)
@@ -92,21 +95,24 @@ class ImNameSpace(socketio.AsyncNamespace):
     async def on_message(self, sid, data:Message,*args):
         """"""
         message:Message = Message.parse_raw(data)
+        ## 先入库
+        message = await self.msg_repo.create_message(message=message.data)
+
         print(f"receive client:{self.sid_user_id_dict.get(sid)} message")
-        if message.data.group_id:
+        if message.group_id:
             ...
             ### 处理群消息
+            await self.handle_group_message(msg=message)
         else:
             ### 处理1对1
             await self.handle_single_message(msg=message) 
         return 
 
-    async def on_msgack(self,sid,data:MessageAckFrame,*args):
+    async def on_msgAck(self,sid,data:MessageAckFrame,*args):
         if isinstance(data,dict):
             msg=MessageAckFrame.parse_obj(data)
         else:
             msg=MessageAckFrame.parse_raw(data)
-        print(">>>",msg)
         # for id in msg.msg_ids:
         await self.redis.xack(
             RedisKey.user_msg_channel(user_id=msg.user_id),
@@ -115,13 +121,15 @@ class ImNameSpace(socketio.AsyncNamespace):
         )
         print("ack message ids ->",msg.msg_ids)
 
+    async def handle_group_message(self,msg:Message):
+        ## 1.先获取所有的群成员
 
-    def handle_group_message(self,msg:Message):
+        ## 2.对每个成员按照 一对一处理
         ...
 
-    async def handle_single_message(self,msg:Message):
+    async def handle_single_message(self,msg:MessagePayLoad):
         user_to:UserInfo = await self.redis.get(
-            RedisKey.user_info_key(user_id=msg.data.msg_to)
+            RedisKey.user_info_key(user_id=msg.msg_to)
         )
         if user_to and user_to.state!=UserState.offline:
             ## 用户在线
@@ -142,9 +150,9 @@ class ImNameSpace(socketio.AsyncNamespace):
             ### 先写到对应的一对一消息信道
             await self.redis.xadd(
                 name=RedisKey.user_msg_channel(
-                    user_id=msg.data.msg_to
+                    user_id=msg.msg_to
                 ),
-                fields={"data":msg.data.json()},
+                fields={"data":msg.json()},
                 id="*"  # TODO id设置为消息ID？必须递增
             )
             ### 创造PC端的消费者组,如果报错，说明已经存在，跳过,消费者会在读取消息的时候去创建
@@ -152,10 +160,10 @@ class ImNameSpace(socketio.AsyncNamespace):
             try:
                 await self.redis.xgroup_create(
                     name=RedisKey.user_msg_channel(
-                        user_id=msg.data.msg_to
+                        user_id=msg.msg_to
                     ),
                     groupname=RedisKey.user_msg_channel_groups_name(
-                        user_id=msg.data.msg_to,
+                        user_id=msg.msg_to,
                         type="PC"
                     )
                 )

@@ -8,7 +8,8 @@ from database.exceptions import UserDoesNotExist,PassWordError,EmailIsExistError
 from starlette import status
 from database.jwt import create_access_token_for_user,get_current_active_user
 from fast_api_repo.auth.encrypt import encrypt_by_md5
-from database.models.user import User
+from database.models.user import User,UserFriendShip
+from typing import List
 
 auth_router = APIRouter()
 
@@ -101,4 +102,21 @@ async def register(
     return BaseResponse(
         message="创建成功",
         data=UserSchema.from_orm(user).dict()
+    )
+
+@auth_router.post(
+    "/friends",
+    name="auth:friends",
+    response_model=BaseResponse
+)
+async def get_friends(
+    current_user: User = Depends(get_current_active_user),
+    users_repo:UserRepository=Depends(get_repository(UserRepository)),
+):
+    ## TODO 不用每次都查询所有? 
+    friends:List[UserFriendShip] = await users_repo.get_friends(user_id=current_user.id)
+    res = [UserSchema.from_orm(friend).dict() for friend in friends]
+    return BaseResponse(
+        message="获取成功",
+        data=res
     )

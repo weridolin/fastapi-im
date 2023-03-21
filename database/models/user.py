@@ -37,3 +37,4 @@ class UserFriendShip(DeclarativeBase):
     current_contact_time=sa.Column(sa.DateTime,default=datetime.datetime.now,comment="最近联系时间")
     friend_nickname=sa.Column(sa.String(256),nullable=False,comment="好友昵称")
     relationship=sa.Column(sa.SMALLINT,comment="好友关系(1:好友 2:陌生人)",nullable=False,default=1)
+
