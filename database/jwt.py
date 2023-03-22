@@ -32,7 +32,6 @@ def create_access_token_for_user(user: User,app_setting:AppSettings) -> str:
         user_id=user.id,
         exp=(datetime.datetime.utcnow()+datetime.timedelta(minutes=app_setting.JWT_EXPIRE_TIME)).timestamp()
     ).dict()
-    print(jwt_content)
     return create_jwt_token(
         jwt_content=jwt_content,
         secret_key=app_setting.JWT_KEY,

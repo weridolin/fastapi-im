@@ -33,7 +33,13 @@ class ImNameSpace(socketio.AsyncNamespace):
         self.app_settings.REDIS_DSN ,encoding="utf-8", decode_responses=True)
         self.sid_user_id_dict=dict()
 
-    async def on_connect(self, sid, environ):
+    async def on_connect(self, sid, environ,data=None):
+        print(sid,environ,">>>>",data)
+        # 处理内部服务直接通过
+        if data and data["id"]=="9527":
+            print(">>> internal service connect")
+            return
+
         token = environ.get("HTTP_AUTHORIZATION",None)
         if token:
             try:
@@ -106,7 +112,6 @@ class ImNameSpace(socketio.AsyncNamespace):
         else:
             ### 处理1对1
             await self.handle_single_message(msg=message) 
-        return 
 
     async def on_msgAck(self,sid,data:MessageAckFrame,*args):
         if isinstance(data,dict):
@@ -136,7 +141,7 @@ class ImNameSpace(socketio.AsyncNamespace):
             try:
                 await sio.emit(
                     event= FrameType.MESSAGE.value,
-                    data=msg.data.json(),
+                    data=msg.json(),
                     namespace="/im",
                     to=user_to.sid
                 )

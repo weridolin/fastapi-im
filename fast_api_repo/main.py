@@ -1,12 +1,9 @@
 from fastapi import FastAPI
-from socketio import AsyncServer
-import socketio
-from fastapi_socketio import SocketManager
-import uvicorn
 from auth.apis import auth_router
 from message.apis import msg_router
 from group.apis import group_router
-from fastapi import Request,HTTPException
+from friends.apis import friend_router
+from fastapi import HTTPException
 from fastapi.responses import JSONResponse
 from fast_api_repo.base import BaseErrResponse,ErrorContext
 
@@ -41,7 +38,11 @@ app.include_router(
     tags=["group"],
     prefix="/group"
 )
-
+app.include_router(
+    router=friend_router,
+    tags=["friends"],
+    prefix="/friend"
+)
 
 # sio =  AsyncServer(async_mode='asgi')
 
