@@ -8,7 +8,7 @@ from database.models.user import User
 
 class FriendManagerRecord(DeclarativeBase):
     """
-        群信息表
+        
     """
 
     __tablename__="im_friend_manager_record"

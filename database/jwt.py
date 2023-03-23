@@ -81,6 +81,12 @@ async def authenticate_user(user_repo:UserRepository,app_setting:AppSettings,tok
             )  
 
 async def get_current_active_user(current_user:User = Depends(get_user_from_token)):
+    if not current_user:
+        raise UserDoesNotExist(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="token不合法,找不到用户!",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     # if current_user.disabled:
     #     raise HTTPException(status_code=400, detail="Inactive user")
     return current_user

@@ -14,12 +14,12 @@ import datetime
 class ModelMixin(object):
 
     created = sa.Column(
-        sa.DateTime(timezone=True),
+        sa.DateTime,
         default=datetime.datetime.now,
         nullable=False
     )
     last_update = sa.Column(
-        sa.DateTime(timezone=True),
+        sa.DateTime,
         default=datetime.datetime.now,
         onupdate=datetime.datetime.now,
         nullable=False

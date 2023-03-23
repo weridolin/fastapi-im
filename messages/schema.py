@@ -20,13 +20,17 @@ class UserInfo(BaseModel):
     user_id:int
     sid:str # 若用户在线,对应的会话ID
 
-## socket io 自定义 event 类型
 class FrameType(Enum):
+    ## socket io 自定义 event 类型
     HEARTBEAT="heartbeat"
     UNDEFINED="undefined"
     MESSAGE="message"
     RESPONSE="response"
     MSGACK="msgAck" #客户端确认收到的消息的格式
+
+class MessageType(Enum):
+    ## Message的类型
+    MESSAGE="message"## 普通消息发送
     GROUPNEWNUMBER="groupNewNumber"
     GROUPEXISTNUMBER="groupExistNumber"
     USERINFOCHANGE="userInfoChange" #用户资料改变
@@ -47,6 +51,7 @@ class BaseFrame(BaseModel):
 
 class MessagePayLoad(BaseModel):
     ## 群消息时,msg_to为空，单聊时,group_id为None
+    type = MessageType.MESSAGE.value
     msg_from:int
     msg_to:Optional[int]=None
     msg_content:str
@@ -57,17 +62,18 @@ class MessagePayLoad(BaseModel):
     last_update:Optional[int]=None 
 
 class AddFriendPayLoad(BaseModel):
-    type:str=FrameType.ADDFRIEND.value
-    user:UserSchema
+    type=MessageType.ADDFRIEND.value
+    friend_info:UserSchema # 请求添加的好友信息
+    user_id:int # 做出该请求的用户id
+    
 
 class AcceptFriendPayLoad(AddFriendPayLoad):
-    type:str=FrameType.FRIENDACCEPT.value
+    type=MessageType.FRIENDACCEPT.value
 
 class RefuseFriendPayLoad(AddFriendPayLoad):
-    type:str=FrameType.FRIENDREFUSED.value
-
+    type=MessageType.FRIENDREFUSED.value
 class UserInfoChangePayload(BaseModel):
-    type:str=FrameType.USERINFOCHANGE.value
+    type=MessageType.USERINFOCHANGE.value
     user:UserSchema
 
 class HeartBeatFrame(BaseFrame):
@@ -85,7 +91,7 @@ class HeartBeatFrame(BaseFrame):
 
 class Message(BaseFrame):
     """
-        消息支持多种类型，除了基本的消息类型，还包括
+        消息支持多种类型，除了基本的消息类型
     """
     type:str=FrameType.MESSAGE.value
     data: Union[MessagePayLoad,AcceptFriendPayLoad,AddFriendPayLoad,RefuseFriendPayLoad,UserInfoChangePayload]
@@ -113,7 +119,7 @@ class MessagePulled(BaseFrame):
 
     """
     type:str=FrameType.MESSAGE.value
-    data:MessagePayLoad
+    data:Union[MessagePayLoad,AcceptFriendPayLoad,AddFriendPayLoad,RefuseFriendPayLoad,UserInfoChangePayload]
     msg_id:str
 
-# class Groupe
+MessagePulledDataT = Union[MessagePayLoad,AcceptFriendPayLoad,AddFriendPayLoad,RefuseFriendPayLoad,UserInfoChangePayload]

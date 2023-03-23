@@ -7,13 +7,25 @@ import traceback
 from settings import get_app_settings
 import aioredis
 from utils.redis_key import RedisKey
-from messages.schema import UserInfo,UserState,HeartBeatFrame,Message,MessageResponse,MessageResponseFrame,FrameType,MessageAckFrame,MessagePulled,MessagePayLoad
+from messages.schema import (    
+        UserInfo,
+        UserState,
+        HeartBeatFrame,
+        Message,
+        FrameType,
+        MessageAckFrame,
+        MessagePulled,
+        MessageType,
+        MessagePulledDataT
+    )
 from typing import Any 
 from aioredis.exceptions import ResponseError
 import json
 from database.base import get_repository
 from database.repositories.user import UserRepository
 from database.repositories.message import MessageRepository
+from utils.serializer import JsonEncoderWithTime
+
 
 mgr = socketio.AsyncRedisManager(get_app_settings().REDIS_DSN)
 sio = socketio.AsyncServer(
@@ -34,10 +46,9 @@ class ImNameSpace(socketio.AsyncNamespace):
         self.sid_user_id_dict=dict()
 
     async def on_connect(self, sid, environ,data=None):
-        print(sid,environ,">>>>",data)
         # 处理内部服务直接通过
         if data and data["id"]=="9527":
-            print(">>> internal service connect")
+            print("(socket io) internal service connect")
             return
 
         token = environ.get("HTTP_AUTHORIZATION",None)
@@ -68,7 +79,7 @@ class ImNameSpace(socketio.AsyncNamespace):
                     await self.pull_new_message(sid=sid,payload=payload)
                 except ResponseError as exc:
                     if "NOGROUP" in str(exc):
-                        print(f"client:{payload.username}({payload.user_id}) has no create msg channel")
+                        print(f"(socket io) client:{payload.username}({payload.user_id}) has no create msg channel")
                     else:
                         raise
 
@@ -101,17 +112,22 @@ class ImNameSpace(socketio.AsyncNamespace):
     async def on_message(self, sid, data:Message,*args):
         """"""
         message:Message = Message.parse_raw(data)
-        ## 先入库
-        message = await self.msg_repo.create_message(message=message.data)
+        ## 普通推送消息先入库
+        if message.data.type==MessageType.MESSAGE.value:
+            message = await self.msg_repo.create_message(message=message.data)
 
         print(f"receive client:{self.sid_user_id_dict.get(sid)} message")
-        if message.group_id:
-            ...
-            ### 处理群消息
-            await self.handle_group_message(msg=message)
-        else:
-            ### 处理1对1
-            await self.handle_single_message(msg=message) 
+
+        if message.data.type == MessageType.MESSAGE.value:
+            if message.data.group_id:
+                ...
+                ### 处理群消息
+                return await self.handle_group_message(msg=message)
+            else:
+                ### 处理1对1
+                return await self.handle_single_message(msg=message,msg_to=message.data.msg_to) 
+        elif message.data.type == MessageType.ADDFRIEND.value:
+            return await self.handle_addFriend(msg=message)
 
     async def on_msgAck(self,sid,data:MessageAckFrame,*args):
         if isinstance(data,dict):
@@ -132,11 +148,12 @@ class ImNameSpace(socketio.AsyncNamespace):
         ## 2.对每个成员按照 一对一处理
         ...
 
-    async def handle_single_message(self,msg:MessagePayLoad):
+    async def handle_single_message(self,msg:Message,msg_to:int):
+        ##查询接收的用户在线状态
         user_to:UserInfo = await self.redis.get(
-            RedisKey.user_info_key(user_id=msg.msg_to)
+            RedisKey.user_info_key(user_id=msg_to)
         )
-        if user_to and user_to.state!=UserState.offline:
+        if user_to and user_to.state!=UserState.offline and user_to.sid in self.sid_user_id_dict:
             ## 用户在线
             try:
                 await sio.emit(
@@ -147,17 +164,15 @@ class ImNameSpace(socketio.AsyncNamespace):
                 )
             except Exception as exc:
                 print(traceback.format_exc())
-
-            ## 保存到数据库
-            ...
+                raise
         else:
             ## 未在线,推送到对应的mq/用户一对一写消息队列
             ### 先写到对应的一对一消息信道
             await self.redis.xadd(
                 name=RedisKey.user_msg_channel(
-                    user_id=msg.msg_to
+                    user_id=msg_to
                 ),
-                fields={"data":msg.json()},
+                fields={"data":msg.data.json()},
                 id="*"  # TODO id设置为消息ID？必须递增
             )
             ### 创造PC端的消费者组,如果报错，说明已经存在，跳过,消费者会在读取消息的时候去创建
@@ -165,10 +180,10 @@ class ImNameSpace(socketio.AsyncNamespace):
             try:
                 await self.redis.xgroup_create(
                     name=RedisKey.user_msg_channel(
-                        user_id=msg.msg_to
+                        user_id=msg_to
                     ),
                     groupname=RedisKey.user_msg_channel_groups_name(
-                        user_id=msg.msg_to,
+                        user_id=msg_to,
                         type="PC"
                     )
                 )
@@ -180,7 +195,7 @@ class ImNameSpace(socketio.AsyncNamespace):
 
     async def pull_new_message(self,sid,payload:JWTPayLoad):
         ## 获取客户端未确认收到的消息.
-        ### 1.先获取group里面未ack的消息，即为 pel队列.  xpending
+        ### 1.先获取group里面未ack的消息，即为 pel队列. xpending
         ### 2.再获取stream里面信息的消息 xreadgroup
         ### pel里面的消息肯定是在xreadgroup之前
         res=list()
@@ -194,7 +209,7 @@ class ImNameSpace(socketio.AsyncNamespace):
         )
         if pending_list:
             res.extend(pending_list[0][1])
-            print(">>> pending list",pending_list)
+            print("(socket io)  pending list",pending_list)
         msg_list = await self.redis.xreadgroup(
             groupname=RedisKey.user_msg_channel_groups_name(
                 user_id=payload.user_id,
@@ -205,28 +220,31 @@ class ImNameSpace(socketio.AsyncNamespace):
         )  
         if msg_list:
             res.extend(msg_list[0][1])  # todo format res 
-            print(">>> msg list",msg_list)
+            print("(socket io)  msg list",msg_list)
         res_format = [
-            MessagePulled(
-                msg_id=msg[0],
-                data=MessagePayLoad.parse_raw(msg[1]["data"])
+            MessagePulled.parse_obj(
+                {               
+                    "msg_id":msg[0],
+                    "data":json.loads(msg[1]["data"])
+                }
             ).dict() for msg in res
         ]
         ## 把新消息发送给客户端，客户端返回收到的消息id 
-        res = await sio.emit(
+        await sio.emit(
             event= FrameType.MESSAGE.value,
-            data=res_format,
+            data=json.dumps(res_format,ensure_ascii=False,cls=JsonEncoderWithTime),
             namespace="/im",
             to=sid
         )
-        print(">>> send new message res ",res)        
 
-
-
+    async def handle_addFriend(self,msg:Message):
+        try:
+            await self.handle_single_message(msg=msg,msg_to=msg.data.user_id)
+        except Exception as exc:
+            return False,exc.__str__()
+        return True,None
 
 sio.register_namespace(ImNameSpace('/im'))
 
-# @sio.on('*',namespace="/im")
-# def catch_all(*args,**kwargs):
-#     print(args,kwargs)
+
     

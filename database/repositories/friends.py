@@ -12,11 +12,11 @@ class FriendShipRepository(BaseRepository):
         result=await self.connection.execute(select(UserFriendShip).where(UserFriendShip.user_id==user_id))
         return result.all()
         
-    async def add_friend(self,request_user_id:int,friend_user_id:int):
+    async def add_friend(self,request_user_id:int,friend_user_id:int) -> FriendManagerRecord:
         record = FriendManagerRecord(
                 msg_from=request_user_id,
                 msg_to=friend_user_id
             )
         self.connection.add(record)
         await self.connection.commit()
-    
+        return record

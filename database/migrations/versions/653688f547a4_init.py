@@ -1,8 +1,8 @@
-"""add table2
+"""init
 
-Revision ID: a0f2be203e73
-Revises: f85be614a8a9
-Create Date: 2023-03-17 15:19:04.590982
+Revision ID: 653688f547a4
+Revises: 
+Create Date: 2023-03-23 15:50:15.956944
 
 """
 from alembic import op
@@ -10,8 +10,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'a0f2be203e73'
-down_revision = 'f85be614a8a9'
+revision = '653688f547a4'
+down_revision = None
 branch_labels = None
 depends_on = None
 
@@ -33,11 +33,25 @@ def upgrade() -> None:
     sa.UniqueConstraint('email'),
     sa.UniqueConstraint('username')
     )
+    op.create_table('im_friend_manager_record',
+    sa.Column('id', sa.BIGINT(), nullable=False),
+    sa.Column('msg_from', sa.BIGINT(), nullable=True),
+    sa.Column('msg_to', sa.BIGINT(), nullable=True),
+    sa.Column('request_time', sa.DateTime(), nullable=True, comment='发送时间'),
+    sa.Column('deal_time', sa.DateTime(), nullable=True, comment='处理时间'),
+    sa.Column('accept', sa.Boolean(), nullable=False, comment='是否通过'),
+    sa.Column('check_info', sa.TEXT(), nullable=True, comment='验证消息描述'),
+    sa.Column('created', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('last_update', sa.DateTime(timezone=True), nullable=False),
+    sa.ForeignKeyConstraint(['msg_from'], ['im_user.id'], onupdate='CASCADE', ondelete='SET NULL'),
+    sa.ForeignKeyConstraint(['msg_to'], ['im_user.id'], onupdate='CASCADE', ondelete='SET NULL'),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('im_group',
     sa.Column('id', sa.BIGINT(), nullable=False),
     sa.Column('group_name', sa.String(length=256), nullable=False, comment='群聊名称'),
     sa.Column('creator_id', sa.BIGINT(), nullable=True, comment='创建者'),
-    sa.Column('created_time', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('created_time', sa.DateTime(), nullable=True),
     sa.Column('owner_id', sa.BIGINT(), nullable=True, comment='群主'),
     sa.Column('announcement', sa.TEXT(), nullable=True, comment='群公告'),
     sa.Column('created', sa.DateTime(timezone=True), nullable=False),
@@ -46,25 +60,12 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['owner_id'], ['im_user.id'], onupdate='CASCADE', ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_table('im_message',
-    sa.Column('id', sa.BIGINT(), nullable=False),
-    sa.Column('msg_from', sa.BIGINT(), nullable=True),
-    sa.Column('msg_to', sa.BIGINT(), nullable=True),
-    sa.Column('msg_content', sa.TEXT(), nullable=True, comment='消息内容'),
-    sa.Column('msg_type', sa.SMALLINT(), nullable=True, comment='消息类型'),
-    sa.Column('send_time', sa.DateTime(timezone=True), nullable=True, comment='发送时间'),
-    sa.Column('created', sa.DateTime(timezone=True), nullable=False),
-    sa.Column('last_update', sa.DateTime(timezone=True), nullable=False),
-    sa.ForeignKeyConstraint(['msg_from'], ['im_user.id'], onupdate='CASCADE', ondelete='SET NULL'),
-    sa.ForeignKeyConstraint(['msg_to'], ['im_user.id'], onupdate='CASCADE', ondelete='SET NULL'),
-    sa.PrimaryKeyConstraint('id')
-    )
     op.create_table('im_user_friends_ship',
     sa.Column('id', sa.BIGINT(), nullable=False),
     sa.Column('user_id', sa.BIGINT(), nullable=True, comment='用户ID'),
     sa.Column('friend_id', sa.BIGINT(), nullable=True, comment='好友ID'),
     sa.Column('friend_group', sa.String(length=256), nullable=True),
-    sa.Column('current_contact_time', sa.DateTime(timezone=True), nullable=True, comment='最近联系时间'),
+    sa.Column('current_contact_time', sa.DateTime(), nullable=True, comment='最近联系时间'),
     sa.Column('friend_nickname', sa.String(length=256), nullable=False, comment='好友昵称'),
     sa.Column('relationship', sa.SMALLINT(), nullable=False, comment='好友关系(1:好友 2:陌生人)'),
     sa.Column('created', sa.DateTime(timezone=True), nullable=False),
@@ -73,15 +74,30 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['user_id'], ['im_user.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_table('im_message',
+    sa.Column('id', sa.BIGINT(), nullable=False),
+    sa.Column('msg_from', sa.BIGINT(), nullable=True),
+    sa.Column('msg_to', sa.BIGINT(), nullable=True),
+    sa.Column('group_id', sa.BIGINT(), nullable=True),
+    sa.Column('msg_content', sa.TEXT(), nullable=True, comment='消息内容'),
+    sa.Column('msg_type', sa.SMALLINT(), nullable=True, comment='消息类型'),
+    sa.Column('send_time', sa.DateTime(), nullable=True, comment='发送时间'),
+    sa.Column('created', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('last_update', sa.DateTime(timezone=True), nullable=False),
+    sa.ForeignKeyConstraint(['group_id'], ['im_group.id'], onupdate='CASCADE', ondelete='SET NULL'),
+    sa.ForeignKeyConstraint(['msg_from'], ['im_user.id'], onupdate='CASCADE', ondelete='SET NULL'),
+    sa.ForeignKeyConstraint(['msg_to'], ['im_user.id'], onupdate='CASCADE', ondelete='SET NULL'),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('im_user_group_ship',
     sa.Column('id', sa.BIGINT(), nullable=False),
     sa.Column('user_id', sa.BIGINT(), nullable=True, comment='用户ID'),
     sa.Column('group_id', sa.BIGINT(), nullable=True, comment='群ID'),
-    sa.Column('current_contact_time', sa.DateTime(timezone=True), nullable=True, comment='最近更新时间'),
+    sa.Column('current_contact_time', sa.DateTime(), nullable=True, comment='最近更新时间'),
     sa.Column('group_nickname', sa.String(length=256), nullable=False, comment='群昵称'),
     sa.Column('created', sa.DateTime(timezone=True), nullable=False),
     sa.Column('last_update', sa.DateTime(timezone=True), nullable=False),
-    sa.ForeignKeyConstraint(['group_id'], ['im_user.id'], ),
+    sa.ForeignKeyConstraint(['group_id'], ['im_group.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['im_user.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -91,8 +107,9 @@ def upgrade() -> None:
 def downgrade() -> None:
     # ### commands auto generated by Alembic - please adjust! ###
     op.drop_table('im_user_group_ship')
-    op.drop_table('im_user_friends_ship')
     op.drop_table('im_message')
+    op.drop_table('im_user_friends_ship')
     op.drop_table('im_group')
+    op.drop_table('im_friend_manager_record')
     op.drop_table('im_user')
     # ### end Alembic commands ###

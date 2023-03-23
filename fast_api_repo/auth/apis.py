@@ -48,8 +48,7 @@ async def login(
         message="登录成功",
         data = UserWithToken(
             access_token=access_token,
-            username=user.username,
-            
+            user=UserSchema.from_orm(user)
         )
     )
 
