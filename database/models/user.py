@@ -37,6 +37,7 @@ class UserFriendShip(DeclarativeBase):
     user_id = sa.Column(ForeignKey(User.id),comment="用户ID")
     user = Relationship(User,foreign_keys=[user_id])
     friend_id = sa.Column(ForeignKey(User.id),comment="好友ID")
+    friend = Relationship(User,foreign_keys=[friend_id])
     friend_group=sa.Column(sa.String(256),nullable=True,default="我的好友")
     current_contact_time=sa.Column(sa.DateTime,default=datetime.datetime.now,comment="最近联系时间")
     friend_nickname=sa.Column(sa.String(256),nullable=True,comment="好友昵称")

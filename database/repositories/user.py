@@ -1,12 +1,14 @@
 from database.base import BaseRepository
 from database.models.user import User
 from database.exceptions import UserDoesNotExist
-from sqlalchemy import select
+from sqlalchemy import select,delete
 from fast_api_repo.auth.encrypt import encrypt_by_md5
 from settings import AppSettings
 from fast_api_repo.auth.schema import JWTPayLoad
 import jwt
 from typing import Optional,List
+from database.models.user import UserFriendShip
+from sqlalchemy.orm import selectinload
 
 class UserRepository(BaseRepository):
 
@@ -33,4 +35,22 @@ class UserRepository(BaseRepository):
         await self.connection.commit()
         return user
     
+
+    async def get_friends(self,user_id:int):
+        result = await self.connection.execute(
+            select(UserFriendShip).
+            where(UserFriendShip.user_id==user_id).
+            order_by(UserFriendShip.current_contact_time).
+            options(
+                selectinload(UserFriendShip.friend)
+            )
+        )
+        return result.scalars().all()
+
+    async def del_friend(self,user_id:int,del_friend_id:int):
+        await self.connection.execute(
+            delete(UserFriendShip).
+            where(UserFriendShip.user_id==user_id,UserFriendShip.friend_id==del_friend_id)
+        )
+        return await self.connection.commit()
 

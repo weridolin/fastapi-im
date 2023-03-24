@@ -28,3 +28,6 @@ class JWTPayLoad(BaseModel):
     exp: int
     sub: str="access"
     username:str
+
+class DelUserRequestForm(BaseModel):
+    del_friend_id:int

@@ -1,5 +1,5 @@
 from fastapi import APIRouter,Depends
-from fast_api_repo.auth.schema import LoginRequest,LoginResponse,BaseResponse,UserWithToken,RegisterForm,UserSchema
+from fast_api_repo.auth.schema import LoginRequest,DelUserRequestForm,LoginResponse,BaseResponse,UserWithToken,RegisterForm,UserSchema
 from database.repositories.user import UserRepository
 from database.base import get_repository
 from settings import get_app_settings,AppSettings
@@ -10,6 +10,8 @@ from database.jwt import create_access_token_for_user,get_current_active_user
 from fast_api_repo.auth.encrypt import encrypt_by_md5
 from database.models.user import User,UserFriendShip
 from typing import List
+from fast_api_repo.dependency import get_sio,SocketioProxy
+
 
 auth_router = APIRouter()
 
@@ -103,9 +105,9 @@ async def register(
         data=UserSchema.from_orm(user).dict()
     )
 
-@auth_router.post(
+@auth_router.get(
     "/friends",
-    name="auth:friends",
+    name="auth:query-friends",
     response_model=BaseResponse
 )
 async def get_friends(
@@ -113,9 +115,26 @@ async def get_friends(
     users_repo:UserRepository=Depends(get_repository(UserRepository)),
 ):
     ## TODO 不用每次都查询所有? 
-    friends:List[UserFriendShip] = await users_repo.get_friends(user_id=current_user.id)
-    res = [UserSchema.from_orm(friend).dict() for friend in friends]
+    records:List[UserFriendShip] = await users_repo.get_friends(current_user.id)
+    res = [UserSchema.from_orm(record.friend).dict() for record in records]
     return BaseResponse(
         message="获取成功",
         data=res
+    )
+
+@auth_router.delete(
+    "/friends",
+    name="auth:delete-friends",
+    response_model=BaseResponse
+)
+async def del_friend(
+    request_form:DelUserRequestForm,
+    current_user: User = Depends(get_current_active_user),
+    users_repo:UserRepository=Depends(get_repository(UserRepository)),
+):
+    await users_repo.del_friend(
+        user_id=current_user.id,del_friend_id=request_form.del_friend_id)
+    # 删除后不需要通知删除方， TODO 删除方发送时显示“不是好友列表”
+    return BaseResponse(
+        message="删除好友成功",
     )
