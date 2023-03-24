@@ -8,6 +8,7 @@ from database.models.user import UserFriendShip
 from fastapi.exceptions import HTTPException
 from fastapi import status
 import datetime
+from sqlalchemy.exc import IntegrityError
 
 class FriendShipRepository(BaseRepository):
 
@@ -52,14 +53,19 @@ class FriendShipRepository(BaseRepository):
             record.deal_time = datetime.datetime.now()
             
             ## update friendship table
-            if accept:
-                await self.connection.execute(
-                    insert(UserFriendShip).values(
-                        user_id=record.msg_from,
-                        friend_id=record.msg_to
+            try:
+                if accept:
+                    
+                    await self.connection.execute(
+                        insert(UserFriendShip).values(
+                            user_id=record.msg_from,
+                            friend_id=record.msg_to
+                        )
                     )
-                )
+            except IntegrityError as error:
+                print(f"user:{record.msg_from} friend:{record.msg_to} is exist",type(error))
             await self.connection.commit()
+
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
