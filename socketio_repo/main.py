@@ -15,9 +15,8 @@ from messages.schema import (
         FrameType,
         MessageAckFrame,
         MessagePulled,
-        MessageType,
-        MessagePulledDataT
-    )
+        MessageType
+                )
 from typing import Any 
 from aioredis.exceptions import ResponseError
 import json
@@ -71,7 +70,7 @@ class ImNameSpace(socketio.AsyncNamespace):
                 await self.redis.set(
                     RedisKey.user_info_key(user_id=payload.user_id),
                     user_info.json(),
-                    ex=5 # 超过3s没发送心跳，默认已经掉线
+                    ex=60*60*24 #TODO 超过3s没发送心跳，默认已经掉线
                 )
 
                 ## 获取登录用户消息队列里面未读取的数据
@@ -129,6 +128,12 @@ class ImNameSpace(socketio.AsyncNamespace):
         elif message.data.type == MessageType.ADDFRIEND.value:
             return await self.handle_addFriend(msg=message)
 
+        elif message.data.type == MessageType.FRIENDACCEPT.value: 
+            return await self.handle_friendAccept(msg=message)
+        
+        elif message.data.type == MessageType.FRIENDREFUSED.value:
+            return await self.handle_friendRefuse(msg=message)
+
     async def on_msgAck(self,sid,data:MessageAckFrame,*args):
         if isinstance(data,dict):
             msg=MessageAckFrame.parse_obj(data)
@@ -153,14 +158,17 @@ class ImNameSpace(socketio.AsyncNamespace):
         user_to:UserInfo = await self.redis.get(
             RedisKey.user_info_key(user_id=msg_to)
         )
-        if user_to and user_to.state!=UserState.offline and user_to.sid in self.sid_user_id_dict:
+        if user_to:
+            user_to = json.loads(user_to)
+        if user_to and user_to["state"]!=UserState.offline and user_to["sid"] in self.sid_user_id_dict:
             ## 用户在线
+            print(">>> 用户在线")
             try:
                 await sio.emit(
                     event= FrameType.MESSAGE.value,
                     data=msg.json(),
                     namespace="/im",
-                    to=user_to.sid
+                    to=user_to["sid"]
                 )
             except Exception as exc:
                 print(traceback.format_exc())
@@ -168,6 +176,7 @@ class ImNameSpace(socketio.AsyncNamespace):
         else:
             ## 未在线,推送到对应的mq/用户一对一写消息队列
             ### 先写到对应的一对一消息信道
+            print("用户不在线")
             await self.redis.xadd(
                 name=RedisKey.user_msg_channel(
                     user_id=msg_to
@@ -185,7 +194,8 @@ class ImNameSpace(socketio.AsyncNamespace):
                     groupname=RedisKey.user_msg_channel_groups_name(
                         user_id=msg_to,
                         type="PC"
-                    )
+                    ),
+                    id="0-0"
                 )
             except Exception as exc:
                 if "BUSYGROUP" in str(exc):
@@ -221,25 +231,44 @@ class ImNameSpace(socketio.AsyncNamespace):
         if msg_list:
             res.extend(msg_list[0][1])  # todo format res 
             print("(socket io)  msg list",msg_list)
-        res_format = [
-            MessagePulled.parse_obj(
-                {               
-                    "msg_id":msg[0],
-                    "data":json.loads(msg[1]["data"])
-                }
-            ).dict() for msg in res
-        ]
-        ## 把新消息发送给客户端，客户端返回收到的消息id 
-        await sio.emit(
-            event= FrameType.MESSAGE.value,
-            data=json.dumps(res_format,ensure_ascii=False,cls=JsonEncoderWithTime),
-            namespace="/im",
-            to=sid
-        )
+        print("(socket io) res",res)
+        if res:
+            res_format = [
+                MessagePulled.parse_obj(
+                    {               
+                        "msg_id":msg[0],
+                        "data":json.loads(msg[1]["data"])
+                    }
+                ).dict() for msg in res
+            ]
+            ## 把新消息发送给客户端，客户端返回收到的消息id 
+            await sio.emit(
+                event= FrameType.MESSAGE.value,
+                data=json.dumps(res_format,ensure_ascii=False,cls=JsonEncoderWithTime),
+                namespace="/im",
+                to=sid
+            )
 
     async def handle_addFriend(self,msg:Message):
+        print("(socket io) add friend request")
         try:
-            await self.handle_single_message(msg=msg,msg_to=msg.data.user_id)
+            await self.handle_single_message(msg=msg,msg_to=msg.data.to_id)
+        except Exception as exc:
+            return False,exc.__str__()
+        return True,None
+
+    async def handle_friendAccept(self,msg:Message):
+        print("(socket io) accept friend request")
+        try:
+            await self.handle_single_message(msg=msg,msg_to=msg.data.to_id)
+        except Exception as exc:
+            return False,exc.__str__()
+        return True,None
+
+    async def handle_friendRefuse(self,msg:Message):
+        print("(socket io) refuse friend request")
+        try:
+            await self.handle_single_message(msg=msg,msg_to=msg.data.to_id)
         except Exception as exc:
             return False,exc.__str__()
         return True,None

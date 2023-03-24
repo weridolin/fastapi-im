@@ -22,3 +22,4 @@ class FriendManagerRecord(DeclarativeBase):
     deal_time = sa.Column(sa.DateTime,comment="处理时间",nullable=True)
     accept = sa.Column(sa.Boolean,comment="是否通过",nullable=False,default=False)
     check_info = sa.Column(sa.TEXT,comment="验证消息描述",nullable=True)
+    refuse_reason  = sa.Column(sa.TEXT,comment="拒绝通过理由",nullable=True)

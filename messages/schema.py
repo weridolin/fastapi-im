@@ -63,15 +63,19 @@ class MessagePayLoad(BaseModel):
 
 class AddFriendPayLoad(BaseModel):
     type=MessageType.ADDFRIEND.value
-    friend_info:UserSchema # 请求添加的好友信息
-    user_id:int # 做出该请求的用户id
+    friend_info:UserSchema # 添加的好友信息
+    from_id:int # 发出该消息的用户id
+    to_id:int # 接受该消息的用户id
+    request_id:int # 该请求对应的记录ID
     
 
 class AcceptFriendPayLoad(AddFriendPayLoad):
     type=MessageType.FRIENDACCEPT.value
 
+
 class RefuseFriendPayLoad(AddFriendPayLoad):
     type=MessageType.FRIENDREFUSED.value
+
 class UserInfoChangePayload(BaseModel):
     type=MessageType.USERINFOCHANGE.value
     user:UserSchema
@@ -121,5 +125,3 @@ class MessagePulled(BaseFrame):
     type:str=FrameType.MESSAGE.value
     data:Union[MessagePayLoad,AcceptFriendPayLoad,AddFriendPayLoad,RefuseFriendPayLoad,UserInfoChangePayload]
     msg_id:str
-
-MessagePulledDataT = Union[MessagePayLoad,AcceptFriendPayLoad,AddFriendPayLoad,RefuseFriendPayLoad,UserInfoChangePayload]
