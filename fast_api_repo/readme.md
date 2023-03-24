@@ -8,9 +8,9 @@
 
 #### 好友管理维护
 ##### 好友添加
-1.申请方添通过HTTP发送到业务逻辑处理SERVER.
-2.业务逻辑处理SERVER通过socketio推送到推送系统(socket-io的添加好友接口).
-3.推送系统判断好友是否在线,是的话直接推送，不在线直接推送到redis用户的msg-channel里面
+- 1.申请方添通过HTTP发送到业务逻辑处理SERVER.       
+- 2.业务逻辑处理SERVER通过socketio推送到推送系统(socket-io的添加好友接口).              
+- 3.推送系统判断好友是否在线,是的话直接推送，不在线直接推送到redis用户的msg-channel里面             
 
 ##### 添加好友流程
 ```mermaid
@@ -25,9 +25,9 @@ graph TB
 
 
 ##### 好友验证通过/拒绝
-1.验证添通过`HTTP`发送到验证结果`(接受/拒绝)`业务逻辑处理SERVER.
-2.业务逻辑处理SERVER通过socketio推送到推送系统(socket-io的添加好友接口).
-3.推送系统判断好友是否在线,是的话直接推送，不在线直接推送到redis用户的msg-channel里面
+- 1.验证添通过`HTTP`发送到验证结果`(接受/拒绝)`业务逻辑处理SERVER.          
+- 2.业务逻辑处理SERVER通过socketio推送到推送系统(socket-io的添加好友接口).          
+- 3.推送系统判断好友是否在线,是的话直接推送，不在线直接推送到redis用户的msg-channel里面         
 
 
 ##### 好友验证通过/拒绝流程
