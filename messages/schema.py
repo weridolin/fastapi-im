@@ -25,7 +25,7 @@ class FrameType(Enum):
     HEARTBEAT="heartbeat"
     UNDEFINED="undefined"
     MESSAGE="message"
-    RESPONSE="response"
+    DeliverResult="DeliverResult"
     MSGACK="msgAck" #客户端确认收到的消息的格式
 
 class MessageType(Enum):
@@ -106,13 +106,6 @@ class Message(BaseFrame):
     data: Union[MessagePayLoad,AcceptFriendPayLoad,AddFriendPayLoad,RefuseFriendPayLoad,UserInfoChangePayload]
 
     
-class MessageResponse(BaseFrame):
-    result:bool=False
-
-class MessageResponseFrame(BaseFrame):
-    type:str=FrameType.RESPONSE.value
-    data:MessageResponse
-
 class MessageAckFrame(BaseFrame):
     """
         收到消息确认返回
@@ -122,6 +115,15 @@ class MessageAckFrame(BaseFrame):
     user_id:int
     username:str
 
+
+class MessageDeliverResult(BaseFrame):
+    ## 消息投递结果
+    type:str=FrameType.DeliverResult.value
+    result:bool=False
+    data:Optional[Any]=None
+    msg:Optional[str]=None
+    
+
 ## 拉取的消息格式
 class MessagePulled(BaseFrame):
     """
@@ -130,3 +132,5 @@ class MessagePulled(BaseFrame):
     type:str=FrameType.MESSAGE.value
     data:Union[MessagePayLoad,AcceptFriendPayLoad,AddFriendPayLoad,RefuseFriendPayLoad,UserInfoChangePayload]
     msg_id:str
+
+

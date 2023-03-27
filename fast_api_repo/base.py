@@ -20,3 +20,4 @@ class ErrorContext(BaseModel):
 class BaseErrResponse(BaseModel):
     code:int=1
     data:ErrorContext
+

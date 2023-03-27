@@ -29,13 +29,17 @@ DeclarativeBase = declarative_base(cls=ModelMixin)
 
 
 class BaseRepository:
-    def __init__(self, conn: AsyncSession) -> None:
-        self._conn = conn
+    def __init__(self, conn: AsyncSession=None) -> None:
+        self._conn = conn or  async_session() 
+
 
     @property
     def connection(self) -> AsyncSession:
         return self._conn
 
+    def __del__(self):
+        if self._conn:
+            self._conn.close()
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     async with async_session() as session:

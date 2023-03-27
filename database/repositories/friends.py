@@ -13,10 +13,16 @@ from sqlalchemy.exc import IntegrityError
 class FriendShipRepository(BaseRepository):
 
     async def get_friends(self,user_id:int) -> List[UserFriendShip]:
+        """
+            查询好友
+        """
         result=await self.connection.execute(select(UserFriendShip).where(UserFriendShip.user_id==user_id))
         return result.all()
         
     async def add_friend(self,request_user_id:int,friend_user_id:int,check_info:str) -> FriendManagerRecord:
+        """
+            增加好友
+        """
         # record = await self.connection.execute(
         #     insert(FriendManagerRecord).values(
         #         msg_from=request_user_id,
@@ -36,12 +42,18 @@ class FriendShipRepository(BaseRepository):
         return record
     
     async def get_friend_apply_record(self,request_user_id:int,friend_user_id:int)->FriendManagerRecord:
+        """
+            获取好友申请记录
+        """
         record = await self.connection.execute(select(FriendManagerRecord).where(
             FriendManagerRecord.msg_to==friend_user_id,FriendManagerRecord.msg_from==request_user_id)
         )
         return record.scalar()
     
     async def deal_friend_apply(self,record_id:int,accept:bool,refuse_reason=None): ##
+        """
+            处理好友申请
+        """
         self.connection.begin()
         record:FriendManagerRecord = await self.connection.execute(
             select(FriendManagerRecord).
@@ -55,7 +67,6 @@ class FriendShipRepository(BaseRepository):
             ## update friendship table
             try:
                 if accept:
-                    
                     await self.connection.execute(
                         insert(UserFriendShip).values(
                             user_id=record.msg_from,
@@ -72,3 +83,18 @@ class FriendShipRepository(BaseRepository):
                 detail=f"申请记录id:{record_id}不存在！"
             )
         return record
+    
+    async def is_friend(self,msg_from:int,msg_to:int):
+        """
+            是否为好友校验
+        """
+        res =  await self.connection.execute(
+            select(UserFriendShip).where(
+                UserFriendShip.user_id==msg_from,
+                UserFriendShip.friend_id==msg_to
+            )
+        )
+        if res.scalar():
+            return True
+        else:
+            return False

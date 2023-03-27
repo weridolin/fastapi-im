@@ -20,7 +20,6 @@ class Message(DeclarativeBase):
     _to = Relationship(User,foreign_keys=[msg_to])
     group_id = sa.Column(ForeignKey(Group.id,onupdate="CASCADE", ondelete="SET NULL"))
     group = Relationship(Group,foreign_keys=[group_id])
-    _to = Relationship(User,foreign_keys=[msg_to])
     msg_content = sa.Column(sa.TEXT,comment="消息内容",nullable=True)
     msg_type=sa.Column(sa.SMALLINT,comment="消息类型",default=0)
     send_time = sa.Column(sa.DateTime,comment="发送时间",default=datetime.datetime.now)
