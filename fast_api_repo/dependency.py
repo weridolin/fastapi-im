@@ -8,7 +8,7 @@ async def get_sio():
         await __sio.start()
     return __sio
 
-async def paginate_params(page:int=None,limit:int=None):
+async def paginate_params(page:int=1,limit:int=100):
     return {
         "page":page,
         "limit":limit

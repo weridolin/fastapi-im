@@ -83,7 +83,7 @@ class FriendShipRepository(BaseRepository):
                 detail=f"申请记录id:{record_id}不存在！"
             )
         return record
-    
+
     async def is_friend(self,msg_from:int,msg_to:int):
         """
             是否为好友校验

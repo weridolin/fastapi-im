@@ -13,6 +13,7 @@ class SchemaMixin(BaseModel):
         return v or datetime.now()
 
 class UserSchema(SchemaMixin):
+    id:int
     username:Optional[str] =None
     # password:str
     email:Optional[str] =None

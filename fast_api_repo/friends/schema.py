@@ -10,3 +10,7 @@ class DealFriendAskRequest(BaseModel):
     request_id:int
     accept:bool=False
     refuse_reason:Optional[str]=None
+
+
+class SearchForm(BaseModel):
+    keyword:Optional[str]=None

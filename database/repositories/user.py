@@ -9,6 +9,7 @@ import jwt
 from typing import Optional,List
 from database.models.user import UserFriendShip
 from sqlalchemy.orm import selectinload
+from sqlalchemy import or_
 
 class UserRepository(BaseRepository):
 
@@ -54,3 +55,15 @@ class UserRepository(BaseRepository):
         )
         return await self.connection.commit()
 
+
+    async def search(self,keyword:str,page:int,limit:int):
+        res = await self.connection.execute(
+            select(User).where(
+                or_(
+                    User.username.ilike(f"%{keyword}%"),
+                    User.telephone.ilike(f"%{keyword}%"),
+                )
+            ).offset((page-1)*limit)
+            .limit(limit)
+        )
+        return res.scalars().all()

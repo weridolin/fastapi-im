@@ -1,15 +1,18 @@
 from fastapi import APIRouter
-from fast_api_repo.friends.schema import AddFriendRequest,BaseResponse,DealFriendAskRequest
+from fast_api_repo.friends.schema import AddFriendRequest,BaseResponse,DealFriendAskRequest,SearchForm
 from fastapi import  Depends
 from database.jwt import get_current_active_user
 from database.base import get_repository
 from database.repositories.friends import FriendShipRepository
 from database.repositories.user import UserRepository
 from database.models.user import User
+from database.schema import UserSchema
 from fast_api_repo.dependency import get_sio,SocketioProxy
 from messages.schema import Message,FrameType,AddFriendPayLoad,UserSchema,AcceptFriendPayLoad,RefuseFriendPayLoad
 from asyncio.futures import Future
 from fastapi import status
+from fast_api_repo.dependency import paginate_params
+
 
 friend_router = APIRouter()
 
@@ -141,12 +144,28 @@ async def deal_friend(
     )        
 
 
-# from fastapi import Request
-# from pydantic import BaseModel
 
-# class Form(BaseModel):
-#     field:str
+@friend_router.get(
+    "/search",
+    name="friend:search-friend",
+    response_model=BaseResponse
+)
+async def search(
+    search_form:SearchForm,
+    user:User=Depends(get_current_active_user),
+    user_repo:UserRepository= Depends(get_repository(UserRepository)),  
+    pagination_params:dict=Depends(paginate_params)  
+):
+    res = await user_repo.search(
+        keyword=search_form.keyword,
+        page=pagination_params["page"],
+        limit=pagination_params['limit']
+    )
 
+    data = [UserSchema.from_orm(msg).dict() for msg in res]
+    return BaseResponse(
+        data=data
+    )
 
 # def interrupt(user_id,body_var,request:Request):
 #     print(user_id,body_var,request)
