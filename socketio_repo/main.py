@@ -18,7 +18,7 @@ from messages.schema import (
         MessageType,
         MessageDeliverResult
     )
-from typing import Any 
+from typing import Any,List
 from aioredis.exceptions import ResponseError
 import json
 from database.base import get_repository
@@ -113,13 +113,12 @@ class ImNameSpace(socketio.AsyncNamespace):
     async def on_message(self, sid, data:Message,*args):
         """"""
         message:Message = Message.parse_raw(data)
-        print(f"receive client:{self.sid_user_id_dict.get(sid)} message")
+        print(f"receive client:{self.sid_user_id_dict.get(sid)} message ->",message)
 
         if message.data.type == MessageType.MESSAGE.value:
             ## 普通推送消息先入库
             _ = await self.msg_repo.create_message(message=message.data)
             if message.data.group_id:
-                ...
                 ### 处理群消息
                 return await self.handle_group_message(msg=message)
             else:
@@ -140,6 +139,15 @@ class ImNameSpace(socketio.AsyncNamespace):
         
         elif message.data.type == MessageType.FRIENDREFUSED.value:
             return await self.handle_friendRefuse(msg=message)
+
+        elif message.data.type == MessageType.GROUPINFOCHANGE.value:
+            return await self.handle_groupInfoChange(msg=message)
+
+        elif message.data.type == MessageType.GROUPCREATE.value:
+            return await self.handle_groupCreate(msg=message)
+
+        elif message.data.type == MessageType.GROUPDELETE.value:
+            return await self.handle_groupDelete(msg=message)
 
     async def on_msgAck(self,sid,data:MessageAckFrame,*args):
         if isinstance(data,dict):
@@ -171,7 +179,6 @@ class ImNameSpace(socketio.AsyncNamespace):
             if user_to and user_to["state"]!=UserState.offline and user_to["sid"] in self.sid_user_id_dict:
                 ## 用户在线
                 print(">>> 用户在线")
-
                 await sio.emit(
                     event= FrameType.MESSAGE.value,
                     data=msg.json(),
@@ -181,7 +188,7 @@ class ImNameSpace(socketio.AsyncNamespace):
             else:
                 ## 未在线,推送到对应的mq/用户一对一写消息队列
                 ### 先写到对应的一对一消息信道
-                print("用户不在线")
+                print(">>> 用户不在线")
                 await self.redis.xadd(
                     name=RedisKey.user_msg_channel(
                         user_id=msg_to
@@ -205,13 +212,14 @@ class ImNameSpace(socketio.AsyncNamespace):
             if "BUSYGROUP" in str(exc):
                 print("consumer is already exist")
             else:
-                return MessageDeliverResult(
-                    msg=str(exc)
-                ).dict()
-        return MessageDeliverResult(
-            result=True,
-            msg="消息投递成功!"
-        ).dict()
+                # return MessageDeliverResult(
+                #     msg=str(exc)
+                # ).dict()
+                raise
+        # return MessageDeliverResult(
+        #     result=True,
+        #     msg="消息投递成功!"
+        # ).dict()
 
     async def pull_new_message(self,sid,payload:JWTPayLoad):
         ## 获取客户端未确认收到的消息.
@@ -282,6 +290,30 @@ class ImNameSpace(socketio.AsyncNamespace):
         except Exception as exc:
             return False,exc.__str__()
         return True,None
+
+    async def handle_groupInfoChange(self,msg:Message):
+        try:
+            for msg_to in msg.data.group_number_list:
+                await self.handle_single_message(msg=msg,msg_to=msg_to)
+        except Exception as exc:
+            return False,exc.__str__()
+        return True,None
+
+    async def handle_groupCreate(self,msg:Message):
+        try:
+            for msg_to in msg.data.init_member_list:
+                await self.handle_single_message(msg=msg,msg_to=msg_to)
+        except Exception as exc:
+            return False,exc.__str__()
+        return True,None       
+
+    async def handle_groupDelete(self,msg:Message):
+        try:
+            for msg_to in msg.data.group_number_list:
+                await self.handle_single_message(msg=msg,msg_to=msg_to)
+        except Exception as exc:
+            return False,exc.__str__()
+        return True,None            
 
 sio.register_namespace(ImNameSpace('/im'))
 

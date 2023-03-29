@@ -4,8 +4,7 @@ from enum import Enum, IntEnum
 from typing import Any,Optional,Union
 from datetime import datetime
 from typing import List
-from database.schema import UserSchema
-
+from database.schema import UserSchema,GroupSchema
 
 
 class UserState(IntEnum):
@@ -40,7 +39,10 @@ class MessageType(Enum):
     FRIENDREFUSED="friendRefuse"#好友添加被拒绝
 
     # BLACKLISTDEL="blackListDel"#从黑名单中移除
-
+    ## Message的类型
+    GROUPINFOCHANGE="groupInfoChange" # 群信息改变，包括群名，公告，群介绍
+    GROUPCREATE="groupCreate"
+    GROUPDELETE="groupDelete"
 
 class MessageContentType(IntEnum):
     text=1
@@ -62,28 +64,46 @@ class MessagePayLoad(BaseModel):
     last_update:Optional[int]=None 
 
 class AddFriendPayLoad(BaseModel):
-    type=MessageType.ADDFRIEND.value
+    type:str=MessageType.ADDFRIEND.value
     friend_info:UserSchema # 添加的好友信息
     from_id:int # 发出该消息的用户id
     to_id:int # 接受该消息的用户id
     request_id:int # 该请求对应的记录ID
 
-# class DelFriendPayLoad(BaseModel):
-#     type=MessageType.DELFRIEND.value
-#     friend_info:UserSchema # 添加的好友信息
-#     from_id:int # 发出该消息的用户id
-#     to_id:int # 接受该消息的用户id
 
 class AcceptFriendPayLoad(AddFriendPayLoad):
-    type=MessageType.FRIENDACCEPT.value
+    type:str=MessageType.FRIENDACCEPT.value
 
 
 class RefuseFriendPayLoad(AddFriendPayLoad):
-    type=MessageType.FRIENDREFUSED.value
+    type:str=MessageType.FRIENDREFUSED.value
 
 class UserInfoChangePayload(BaseModel):
-    type=MessageType.USERINFOCHANGE.value
+    type:str=MessageType.USERINFOCHANGE.value
     user:UserSchema
+
+##### 群聊相关
+class GroupInfoChangePayload(BaseModel):
+    type:str=MessageType.GROUPINFOCHANGE.value
+    group_id:int
+    group_number_list:List[int]
+    group_name:Optional[str]=None #群名称
+    group_info:Optional[str]=None # 群介绍
+    notification:Optional[str]=None # 群通知
+    user:UserSchema # 操作用户
+
+class GroupCreatePayload(BaseModel):
+    type:str=MessageType.GROUPCREATE.value
+    init_member_list:List[int]
+    user:UserSchema # 操作用户
+    group:GroupSchema
+
+class GroupDeletePayload(BaseModel):
+    type:str=MessageType.GROUPDELETE.value
+    user:UserSchema # 操作用户
+    group:GroupSchema 
+    group_number_list:List[int]
+
 
 class HeartBeatFrame(BaseFrame):
     """
@@ -103,7 +123,8 @@ class Message(BaseFrame):
         消息支持多种类型，除了基本的消息类型
     """
     type:str=FrameType.MESSAGE.value
-    data: Union[MessagePayLoad,AcceptFriendPayLoad,AddFriendPayLoad,RefuseFriendPayLoad,UserInfoChangePayload]
+    ## todo 拆开
+    data: Union[MessagePayLoad,AcceptFriendPayLoad,AddFriendPayLoad,RefuseFriendPayLoad,GroupInfoChangePayload,GroupCreatePayload,GroupDeletePayload]
 
     
 class MessageAckFrame(BaseFrame):
@@ -134,3 +155,8 @@ class MessagePulled(BaseFrame):
     msg_id:str
 
 
+
+# class GroupMessageFrame(BaseFrame):
+#     type=FrameType.MESSAGE.value
+#     data:Optional[GroupInfoChangePayload]=None
+    

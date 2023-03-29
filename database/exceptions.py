@@ -11,3 +11,5 @@ class PassWordError(HTTPException):pass
 class UserIsExistError(HTTPException):pass
 
 class EmailIsExistError(HTTPException):pass
+
+class NoPermissionError(HTTPException):pass

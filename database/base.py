@@ -37,9 +37,6 @@ class BaseRepository:
     def connection(self) -> AsyncSession:
         return self._conn
 
-    def __del__(self):
-        if self._conn:
-            self._conn.close()
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     async with async_session() as session:
@@ -57,13 +54,9 @@ def get_repository(
 
     return _get_repo
 
-
-
-
 engine = create_async_engine(
     str(get_app_settings().ASYNC_PG_DSN)
 )
-
 async_session = async_scoped_session(
     sessionmaker(
         engine,
