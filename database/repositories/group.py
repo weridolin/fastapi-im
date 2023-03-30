@@ -5,11 +5,11 @@ from typing import Optional,List
 from sqlalchemy import select,insert,func
 from sqlalchemy.orm import selectinload
 from fast_api_repo.dependency import SocketioProxy
-from messages.schema import GroupInfoChangePayload,Message,GroupCreatePayload,GroupSchema,GroupDeletePayload
+from messages.schema import GroupInfoChangePayload,Message,GroupCreatePayload,GroupSchema,GroupDeletePayload,GroupInviteNumbersPayload
 from asyncio import Future
 from database.models.user import User
 from database.schema import UserSchema
-from database.exceptions import NoPermissionError
+from database.exceptions import NoPermissionError,GroupNotFoundError
 from fastapi import status
 
 class GroupInfoRepository(BaseRepository):
@@ -172,7 +172,6 @@ class GroupInfoRepository(BaseRepository):
             await fut
             return await self.connection.commit()
 
-
     async def get_group_member_count(self,group_id:int) -> int:
         result = await self.connection.execute(
                 select(func.count(GroupMemberShip.id)).where(
@@ -192,3 +191,48 @@ class GroupInfoRepository(BaseRepository):
         )
 
         return result.scalars().all()
+    
+    async def invite_new_member(self,group_id:int,user:User,new_group_numbers:List[int],sio:SocketioProxy=None): 
+        async with self.connection.begin_nested():
+            result = await self.connection.execute(
+                select(Group).where(Group.id==group_id)
+            )
+            group = result.scalar_one()
+            if not group:
+                raise GroupNotFoundError(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"can not find group by id:{group_id}"
+                )
+            group.member_count+=len(new_group_numbers)
+            ## 新的群成员信息
+            params=[
+                {   
+                    "user_id":member,
+                    "group_id":group_id,
+                    "invited_user_id":user.id,
+                    "join_time":datetime.datetime.now(),
+                    "role":0
+                } for member in new_group_numbers
+            ]
+            await self.connection.execute(insert(GroupMemberShip),params)
+
+            if sio:
+                ## check message is push to socketio
+                msg = Message(
+                    data=GroupInviteNumbersPayload(
+                        user=UserSchema.from_orm(user),
+                        new_number_list=new_group_numbers,
+                        group=GroupSchema.from_orm(group)
+                    )
+                )
+                fut:Future = Future()
+                async def callback(success,err_msg=None):
+                    fut.set_result((success,err_msg))
+                await sio.emit(
+                    "message",
+                    data=msg.json(),
+                    namespace="/im",
+                    callback=callback
+                )
+                await fut
+            return await self.connection.commit()

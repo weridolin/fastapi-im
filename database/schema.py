@@ -82,6 +82,9 @@ class GroupInfoUpdateRequest(BaseModel):
     group_intro:Optional[str]=None
     # needVerification为群验证 0为申请需要同意 邀请直接进 1为所有人进群需要验证，除了群主管理员邀请进群 2为直接进群
 
+class InviteGroupNumberRequest(BaseModel):
+    invite_user_list:List[int]  ## 邀请的新成员列表
+
 ####### message 相关
 class MessageSchema(SchemaMixin):
     msg_from:int

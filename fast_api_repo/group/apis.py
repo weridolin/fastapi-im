@@ -5,7 +5,7 @@ from database.jwt import get_current_active_user
 from fastapi import Depends
 from database.repositories.group import GroupInfoRepository
 from database.base import get_repository
-from database.schema import CreateGroupRequest,GroupSchema,GetGroupInfoRequest,UserSchema,GroupInfoUpdateRequest
+from database.schema import CreateGroupRequest,GroupSchema,GetGroupInfoRequest,UserSchema,GroupInfoUpdateRequest,InviteGroupNumberRequest
 from fast_api_repo.dependency import get_sio,SocketioProxy
 
 group_router = APIRouter()
@@ -117,3 +117,28 @@ async def query_group_members(
     return BaseResponse(
         data=data
     )
+
+
+@group_router.post(
+    "/{group_id}/members",
+    name="group:invite-group-member",
+    response_model=BaseResponse
+)
+async def invite_group_member(
+    group_id:int,
+    invite_request_form:InviteGroupNumberRequest,
+    user:User=Depends(get_current_active_user),
+    group_repo:GroupInfoRepository=Depends(get_repository(GroupInfoRepository)),   
+    sio:SocketioProxy=Depends(get_sio)
+):
+    await group_repo.invite_new_member(
+        group_id=group_id,
+        user=user,
+        sio=sio,
+        new_group_numbers=invite_request_form.invite_user_list
+    )
+    ## TODO 邀请需要验证？
+    return BaseResponse(
+        message="邀请成功"
+    )
+

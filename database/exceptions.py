@@ -13,3 +13,5 @@ class UserIsExistError(HTTPException):pass
 class EmailIsExistError(HTTPException):pass
 
 class NoPermissionError(HTTPException):pass
+
+class GroupNotFoundError(HTTPException):pass

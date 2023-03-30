@@ -43,6 +43,7 @@ class MessageType(Enum):
     GROUPINFOCHANGE="groupInfoChange" # 群信息改变，包括群名，公告，群介绍
     GROUPCREATE="groupCreate"
     GROUPDELETE="groupDelete"
+    GROUPNUMBERINVITE="groupNumberInvite"
 
 class MessageContentType(IntEnum):
     text=1
@@ -105,6 +106,13 @@ class GroupDeletePayload(BaseModel):
     group_number_list:List[int]
 
 
+class GroupInviteNumbersPayload(BaseModel):
+    type:str=MessageType.GROUPNUMBERINVITE.value
+    user:UserSchema # 操作用户
+    group:GroupSchema 
+    new_number_list:List[int]
+
+
 class HeartBeatFrame(BaseFrame):
     """
     {
@@ -124,7 +132,7 @@ class Message(BaseFrame):
     """
     type:str=FrameType.MESSAGE.value
     ## todo 拆开
-    data: Union[MessagePayLoad,AcceptFriendPayLoad,AddFriendPayLoad,RefuseFriendPayLoad,GroupInfoChangePayload,GroupCreatePayload,GroupDeletePayload]
+    data: Union[MessagePayLoad,AcceptFriendPayLoad,AddFriendPayLoad,RefuseFriendPayLoad,GroupInfoChangePayload,GroupCreatePayload,GroupDeletePayload,GroupInviteNumbersPayload]
 
     
 class MessageAckFrame(BaseFrame):
