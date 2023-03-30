@@ -142,3 +142,25 @@ async def invite_group_member(
         message="邀请成功"
     )
 
+
+
+@group_router.post(
+    "/{group_id}/members/quit",
+    name="group:quit-group-member",
+    response_model=BaseResponse
+)
+async def quit_group(
+    group_id:int,
+    user:User=Depends(get_current_active_user),
+    group_repo:GroupInfoRepository=Depends(get_repository(GroupInfoRepository)),   
+    sio:SocketioProxy=Depends(get_sio)
+):
+    await group_repo.quit_group(
+        group_id=group_id,
+        user=user,
+        sio=sio
+    )
+    
+    return BaseResponse(
+        message="退出成功"
+    )

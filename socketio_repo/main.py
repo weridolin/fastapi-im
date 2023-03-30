@@ -150,7 +150,10 @@ class ImNameSpace(socketio.AsyncNamespace):
             return await self.handle_groupDelete(msg=message)
     
         elif message.data.type == MessageType.GROUPNUMBERINVITE.value:
-            return await self.handle_groupNumberInvite(msg=message)
+            return await self.handle_groupMemberQuit(msg=message)
+
+        elif message.data.type == MessageType.GROUPMEMBERQUIT.value:
+            return await self.handle_groupMemberQuit(msg=message)
 
     async def on_msgAck(self,sid,data:MessageAckFrame,*args):
         if isinstance(data,dict):
@@ -318,7 +321,7 @@ class ImNameSpace(socketio.AsyncNamespace):
             return False,exc.__str__()
         return True,None            
 
-    async def handle_groupNumberInvite(self,msg:Message):
+    async def handle_groupMemberInvite(self,msg:Message):
         try:
             for msg_to in msg.data.new_number_list:
                 await self.handle_single_message(msg=msg,msg_to=msg_to)
@@ -326,6 +329,13 @@ class ImNameSpace(socketio.AsyncNamespace):
             return False,exc.__str__()
         return True,None            
 
+    async def handle_groupMemberQuit(self,msg:Message):
+        try:
+            for msg_to in msg.data.group_number_list:
+                await self.handle_single_message(msg=msg,msg_to=msg_to)
+        except Exception as exc:
+            return False,exc.__str__()
+        return True,None            
 
 sio.register_namespace(ImNameSpace('/im'))
 

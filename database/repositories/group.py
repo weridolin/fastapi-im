@@ -2,10 +2,10 @@ from database.base import BaseRepository
 from database.models.group import Group,GroupMemberShip
 import datetime
 from typing import Optional,List
-from sqlalchemy import select,insert,func
+from sqlalchemy import select,insert,func,delete
 from sqlalchemy.orm import selectinload
 from fast_api_repo.dependency import SocketioProxy
-from messages.schema import GroupInfoChangePayload,Message,GroupCreatePayload,GroupSchema,GroupDeletePayload,GroupInviteNumbersPayload
+from messages.schema import GroupInfoChangePayload,Message,GroupCreatePayload,GroupSchema,GroupDeletePayload,GroupInviteNumbersPayload,GroupMemberQuitPayload
 from asyncio import Future
 from database.models.user import User
 from database.schema import UserSchema
@@ -193,6 +193,7 @@ class GroupInfoRepository(BaseRepository):
         return result.scalars().all()
     
     async def invite_new_member(self,group_id:int,user:User,new_group_numbers:List[int],sio:SocketioProxy=None): 
+
         async with self.connection.begin_nested():
             result = await self.connection.execute(
                 select(Group).where(Group.id==group_id)
@@ -216,13 +217,21 @@ class GroupInfoRepository(BaseRepository):
             ]
             await self.connection.execute(insert(GroupMemberShip),params)
 
+            ## 查询群成员列表
+            result = await self.connection.execute(
+                select(GroupMemberShip).where(GroupMemberShip.group_id==group_id)
+            )
+            group_members=result.scalars().all()
+            group_member_list = [member.user_id for member in group_members if member.user_id != user.id]
+
             if sio:
                 ## check message is push to socketio
                 msg = Message(
                     data=GroupInviteNumbersPayload(
                         user=UserSchema.from_orm(user),
                         new_number_list=new_group_numbers,
-                        group=GroupSchema.from_orm(group)
+                        group=GroupSchema.from_orm(group),
+                        group_number_list=group_member_list
                     )
                 )
                 fut:Future = Future()
@@ -236,3 +245,56 @@ class GroupInfoRepository(BaseRepository):
                 )
                 await fut
             return await self.connection.commit()
+        
+
+    
+    async def quit_group(self,group_id:int,user:User,sio:SocketioProxy=None):
+        async with self.connection.begin_nested():
+            result = await self.connection.execute(
+                select(GroupMemberShip).where(
+                    GroupMemberShip.group_id==group_id,
+                    GroupMemberShip.user_id==user.id
+                ).options(
+                    selectinload(GroupMemberShip.group)
+                )
+            )
+            
+            group = result.scalar()
+            if not group:
+                raise GroupNotFoundError(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"can not find group member ship by group id :{group_id} and user id:{user.id}"
+                )
+
+            result = await self.connection.execute(
+                select(GroupMemberShip).where(
+                    GroupMemberShip.group_id==group_id,
+                )
+            )
+
+            group_members=result.scalars().all()
+            group_member_list = [member.user_id for member in group_members if member.user_id != user.id]
+            if sio:
+                ## check message is push to socketio
+                msg = Message(
+                    data=GroupMemberQuitPayload(
+                        quit_user=UserSchema.from_orm(user),
+                        group_number_list=group_member_list,
+                        group=GroupSchema.from_orm(group.group)
+                    )
+                )
+                fut:Future = Future()
+                async def callback(success,err_msg=None):
+                    fut.set_result((success,err_msg))
+                await sio.emit(
+                    "message",
+                    data=msg.json(),
+                    namespace="/im",
+                    callback=callback
+                )
+                await fut
+
+            group.group.max_member_count-=1
+            await self.connection.delete(group)
+
+            await self.connection.commit()
